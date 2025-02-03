@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Forms;
+using RF2DFieldSolver.Scenarios;
 
 namespace RF2DFieldSolver
 {
@@ -192,6 +193,35 @@ namespace RF2DFieldSolver
         {
             // Implementation for toggling the keep aspect ratio feature
             laplace.KeepAspectRatio = btnKeepAspectRatio.Checked;
+        }
+
+        private void ShowScenarioDialog()
+        {
+            var scenarios = Scenario.CreateAll();
+            foreach (var scenario in scenarios)
+            {
+                scenario.ScenarioCreated += (topLeft, bottomRight, elementList) =>
+                {
+                    list = elementList;
+                    laplace.SetArea(topLeft, bottomRight);
+                };
+                scenario.ShowDialog();
+            }
+        }
+
+        private void ShowVertexEditDialog(PointF vertex)
+        {
+            using (var dialog = new VertexEditDialog())
+            {
+                dialog.X = vertex.X;
+                dialog.Y = vertex.Y;
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Update the vertex with new values
+                    vertex.X = dialog.X;
+                    vertex.Y = dialog.Y;
+                }
+            }
         }
     }
 }

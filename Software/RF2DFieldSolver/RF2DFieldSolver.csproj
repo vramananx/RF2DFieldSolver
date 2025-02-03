@@ -55,6 +55,16 @@
     <Compile Include="Scenarios\scenario.h" />
     <Compile Include="Scenarios\stripline.cpp" />
     <Compile Include="Scenarios\stripline.h" />
+    <Compile Include="Scenarios\Scenario.cs" />
+    <Compile Include="Scenarios\CoplanarDifferentialMicrostrip.cs" />
+    <Compile Include="Scenarios\CoplanarDifferentialStripline.cs" />
+    <Compile Include="Scenarios\CoplanarMicrostrip.cs" />
+    <Compile Include="Scenarios\CoplanarStripline.cs" />
+    <Compile Include="Scenarios\DifferentialMicrostrip.cs" />
+    <Compile Include="Scenarios\DifferentialStripline.cs" />
+    <Compile Include="Scenarios\Microstrip.cs" />
+    <Compile Include="Scenarios\Stripline.cs" />
+    <Compile Include="VertexEditDialog.cs" />
   </ItemGroup>
 
   <ItemGroup>
