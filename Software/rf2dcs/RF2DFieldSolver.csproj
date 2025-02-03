@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+    <RootNamespace>RF2DFieldSolver</RootNamespace>
+    <StartupObject>RF2DFieldSolver.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="CustomWidgets\informationbox.cs" />
+    <Compile Include="CustomWidgets\pcbview.cs" />
+    <Compile Include="CustomWidgets\siunitedit.cs" />
+    <Compile Include="element.cs" />
+    <Compile Include="elementlist.cs" />
+    <Compile Include="laplace\laplace.cs" />
+    <Compile Include="main.cs" />
+    <Compile Include="mainwindow.cs" />
+    <Compile Include="savable.cs" />
+    <Compile Include="Scenarios\scenario.cs" />
+    <Compile Include="util.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="5.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="5.0.2" />
+    <PackageReference Include="System.Windows.Forms" Version="5.0.2" />
+  </ItemGroup>
+
+</Project>
