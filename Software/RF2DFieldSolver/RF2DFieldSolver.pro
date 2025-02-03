@@ -9,9 +9,6 @@ CONFIG += c++11
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    CustomWidgets/informationbox.cpp \
-    CustomWidgets/pcbview.cpp \
-    CustomWidgets/siunitedit.cpp \
     Scenarios/coplanardifferentialmicrostrip.cpp \
     Scenarios/coplanardifferentialstripline.cpp \
     Scenarios/coplanarmicrostrip.cpp \
@@ -27,17 +24,12 @@ SOURCES += \
     laplace/laplace.cpp \
     laplace/lattice.c \
     laplace/worker.c \
-    main.cpp \
-    mainwindow.cpp \
     polygon.cpp \
     savable.cpp \
     unit.cpp \
     util.cpp
 
 HEADERS += \
-    CustomWidgets/informationbox.h \
-    CustomWidgets/pcbview.h \
-    CustomWidgets/siunitedit.h \
     Scenarios/coplanardifferentialmicrostrip.h \
     Scenarios/coplanardifferentialstripline.h \
     Scenarios/coplanarmicrostrip.h \
@@ -55,7 +47,6 @@ HEADERS += \
     laplace/lattice.h \
     laplace/tuple.h \
     laplace/worker.h \
-    mainwindow.h \
     polygon.h \
     qpointervariant.h \
     savable.h \
@@ -64,8 +55,7 @@ HEADERS += \
 
 FORMS += \
     CustomWidgets/vertexEditDialog.ui \
-    Scenarios/scenario.ui \
-    mainwindow.ui
+    Scenarios/scenario.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -73,7 +63,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 REVISION = $$system(git rev-parse HEAD)
-DEFINES += GITHASH=\\"\"$$REVISION\\"\"
+DEFINES += GITHASH=\\"\"$$REVISION\\"\" 
 DEFINES += FW_MAJOR=1 FW_MINOR=0 FW_PATCH=0
 
 RESOURCES += \

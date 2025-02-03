@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net5.0-windows</TargetFramework>
+    <UseWPF>false</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="MainForm.cs" />
+    <Compile Include="MainForm.Designer.cs" />
+    <Compile Include="CustomWidgets\InformationBox.cs" />
+    <Compile Include="CustomWidgets\PcbView.cs" />
+    <Compile Include="CustomWidgets\SiUnitEdit.cs" />
+    <Compile Include="element.cpp" />
+    <Compile Include="element.h" />
+    <Compile Include="elementlist.cpp" />
+    <Compile Include="elementlist.h" />
+    <Compile Include="gauss\gauss.cpp" />
+    <Compile Include="gauss\gauss.h" />
+    <Compile Include="json.hpp" />
+    <Compile Include="laplace\laplace.cpp" />
+    <Compile Include="laplace\laplace.h" />
+    <Compile Include="laplace\lattice.c" />
+    <Compile Include="laplace\lattice.h" />
+    <Compile Include="laplace\tuple.h" />
+    <Compile Include="laplace\worker.c" />
+    <Compile Include="laplace\worker.h" />
+    <Compile Include="polygon.cpp" />
+    <Compile Include="polygon.h" />
+    <Compile Include="qpointervariant.h" />
+    <Compile Include="savable.cpp" />
+    <Compile Include="savable.h" />
+    <Compile Include="unit.cpp" />
+    <Compile Include="unit.h" />
+    <Compile Include="util.cpp" />
+    <Compile Include="util.h" />
+    <Compile Include="Scenarios\coplanardifferentialmicrostrip.cpp" />
+    <Compile Include="Scenarios\coplanardifferentialmicrostrip.h" />
+    <Compile Include="Scenarios\coplanardifferentialstripline.cpp" />
+    <Compile Include="Scenarios\coplanardifferentialstripline.h" />
+    <Compile Include="Scenarios\coplanarmicrostrip.cpp" />
+    <Compile Include="Scenarios\coplanarmicrostrip.h" />
+    <Compile Include="Scenarios\coplanarstripline.cpp" />
+    <Compile Include="Scenarios\coplanarstripline.h" />
+    <Compile Include="Scenarios\differentialmicrostrip.cpp" />
+    <Compile Include="Scenarios\differentialmicrostrip.h" />
+    <Compile Include="Scenarios\differentialstripline.cpp" />
+    <Compile Include="Scenarios\differentialstripline.h" />
+    <Compile Include="Scenarios\microstrip.cpp" />
+    <Compile Include="Scenarios\microstrip.h" />
+    <Compile Include="Scenarios\scenario.cpp" />
+    <Compile Include="Scenarios\scenario.h" />
+    <Compile Include="Scenarios\stripline.cpp" />
+    <Compile Include="Scenarios\stripline.h" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="app.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

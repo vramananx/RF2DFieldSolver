@@ -98,46 +98,100 @@ namespace RF2DFieldSolver
         private void StartCalculation()
         {
             // Implementation for starting the calculation
+            // Disable UI elements during calculation
+            btnStartCalculation.Enabled = false;
+            btnAbortCalculation.Enabled = true;
+            btnSave.Enabled = false;
+            btnLoad.Enabled = false;
+            btnAddElement.Enabled = false;
+            btnRemoveElement.Enabled = false;
+            btnShowPotential.Enabled = false;
+            btnShowGrid.Enabled = false;
+            btnSnapToGrid.Enabled = false;
+            btnKeepAspectRatio.Enabled = false;
+
+            // Start the calculation process
+            laplace.StartCalculation(list);
+
+            // Enable UI elements after calculation
+            btnStartCalculation.Enabled = true;
+            btnAbortCalculation.Enabled = false;
+            btnSave.Enabled = true;
+            btnLoad.Enabled = true;
+            btnAddElement.Enabled = true;
+            btnRemoveElement.Enabled = true;
+            btnShowPotential.Enabled = true;
+            btnShowGrid.Enabled = true;
+            btnSnapToGrid.Enabled = true;
+            btnKeepAspectRatio.Enabled = true;
         }
 
         private void SaveProject()
         {
             // Implementation for saving the project
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "RF 2D field solver files (*.RF2Dproj)|*.RF2Dproj";
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Save the project to the selected file
+                    list.SaveToFile(saveFileDialog.FileName);
+                }
+            }
         }
 
         private void LoadProject()
         {
             // Implementation for loading the project
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Filter = "RF 2D field solver files (*.RF2Dproj)|*.RF2Dproj";
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Load the project from the selected file
+                    list.LoadFromFile(openFileDialog.FileName);
+                }
+            }
         }
 
         private void AddElement()
         {
             // Implementation for adding a new element
+            Element element = new Element();
+            list.AddElement(element);
         }
 
         private void RemoveElement()
         {
             // Implementation for removing an element
+            if (list.SelectedElement != null)
+            {
+                list.RemoveElement(list.SelectedElement);
+            }
         }
 
         private void ToggleShowPotential()
         {
             // Implementation for toggling the display of potential field
+            laplace.ShowPotential = btnShowPotential.Checked;
         }
 
         private void ToggleShowGrid()
         {
             // Implementation for toggling the display of grid
+            laplace.ShowGrid = btnShowGrid.Checked;
         }
 
         private void ToggleSnapToGrid()
         {
             // Implementation for toggling the snap to grid feature
+            laplace.SnapToGrid = btnSnapToGrid.Checked;
         }
 
         private void ToggleKeepAspectRatio()
         {
             // Implementation for toggling the keep aspect ratio feature
+            laplace.KeepAspectRatio = btnKeepAspectRatio.Checked;
         }
     }
 }
