@@ -1,34 +1,35 @@
 #ifndef SIUNITEDIT_H
 #define SIUNITEDIT_H
 
-#include <QLineEdit>
+#include <Windows.h>
+#include <System.Windows.Forms.h>
 
-class SIUnitEdit : public QLineEdit
+class SIUnitEdit : public System::Windows::Forms::TextBox
 {
     Q_OBJECT
 public:
-    SIUnitEdit(QString unit = QString(), QString prefixes = " ", int precision = 0, QWidget *parent = nullptr);
-    SIUnitEdit(QWidget *parent);
+    SIUnitEdit(System::String^ unit = nullptr, System::String^ prefixes = " ", int precision = 0, System::Windows::Forms::Form^ parent = nullptr);
+    SIUnitEdit(System::Windows::Forms::Form^ parent);
 
-    void setUnit(QString unit) { this->unit = unit; setValueQuiet(_value); }
-    void setPrefixes(QString prefixes) { this->prefixes = prefixes; setValueQuiet(_value); }
+    void setUnit(System::String^ unit) { this->unit = unit; setValueQuiet(_value); }
+    void setPrefixes(System::String^ prefixes) { this->prefixes = prefixes; setValueQuiet(_value); }
     void setPrecision(int precision) { this->precision = precision; setValueQuiet(_value); }
     double value() { return _value; }
 public slots:
     void setValue(double value);
     void setValueQuiet(double value);
 signals:
-    void valueChanged(double newvalue);
-    void valueUpdated(QWidget *w);
-    void editingAborted();
-    void focusLost();
+    void ValueChanged(double newvalue);
+    void ValueUpdated(System::Windows::Forms::Form^ w);
+    void EditingAborted();
+    void FocusLost();
 protected:
-    bool eventFilter(QObject *obj, QEvent *event) override;
+    bool eventFilter(System::Object^ obj, System::EventArgs^ event) override;
 private slots:
     void continueEditing();
 private:
     void parseNewValue(double factor);
-    QString unit, prefixes;
+    System::String^ unit, prefixes;
     int precision;
     double _value;
 };

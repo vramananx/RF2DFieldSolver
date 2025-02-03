@@ -12,27 +12,30 @@
 #include "differentialstripline.h"
 #include "coplanardifferentialstripline.h"
 
-Scenario::Scenario(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::Scenario)
+Scenario::Scenario(System::Windows::Forms::Form^ parent) :
+    Form(parent),
+    ui(gcnew Ui::Scenario)
 {
     ui->setupUi(this);
 
-    ui->parameters->setLayout(new QFormLayout);
-    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &Scenario::reject);
-    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, [=](){
+    ui->parameters->setLayout(gcnew System::Windows::Forms::TableLayoutPanel);
+    ui->buttonBox->CancelButton = gcnew System::Windows::Forms::Button();
+    ui->buttonBox->CancelButton->Click += gcnew System::EventHandler(this, &Scenario::reject);
+    ui->buttonBox->AcceptButton = gcnew System::Windows::Forms::Button();
+    ui->buttonBox->AcceptButton->Click += gcnew System::EventHandler(this, [=](System::Object^ sender, System::EventArgs^ e){
         // update parameters
         for(unsigned int i=0;i<parameters.size();i++) {
-            auto layout = static_cast<QFormLayout*>(ui->parameters->layout());
-            auto entry = static_cast<SIUnitEdit*>(layout->itemAt(i, QFormLayout::FieldRole)->widget());
+            auto layout = static_cast<System::Windows::Forms::TableLayoutPanel^>(ui->parameters->Layout);
+            auto entry = static_cast<SIUnitEdit^>(layout->GetControlFromPosition(1, i));
             *parameters[i].value = entry->value();
         }
 
         auto list = createScenario();
-        emit scenarioCreated(QPointF(ui->xleft->value(), ui->ytop->value()), QPointF(ui->xright->value(), ui->ybottom->value()), list);
-        accept();
+        scenarioCreated(System::Drawing::PointF(ui->xleft->value(), ui->ytop->value()), System::Drawing::PointF(ui->xright->value(), ui->ybottom->value()), list);
+        this->DialogResult = System::Windows::Forms::DialogResult::OK;
+        this->Close();
     });
-    ui->autoArea->setChecked(true);
+    ui->autoArea->Checked = true;
     ui->xleft->setUnit("m");
     ui->xleft->setPrefixes("um ");
     ui->xleft->setPrecision(4);
@@ -62,16 +65,16 @@ Scenario::~Scenario()
 QList<Scenario *> Scenario::createAll()
 {
     QList<Scenario*> ret;
-    ret.push_back(new Microstrip());
-    ret.push_back(new CoplanarMicrostrip());
-    ret.push_back(new DifferentialMicrostrip());
-    ret.push_back(new CoplanarDifferentialMicrostrip());
-    ret.push_back(new Stripline());
-    ret.push_back(new CoplanarStripline());
-    ret.push_back(new DifferentialStripline());
-    ret.push_back(new CoplanarDifferentialStripline());
+    ret.push_back(gcnew Microstrip());
+    ret.push_back(gcnew CoplanarMicrostrip());
+    ret.push_back(gcnew DifferentialMicrostrip());
+    ret.push_back(gcnew CoplanarDifferentialMicrostrip());
+    ret.push_back(gcnew Stripline());
+    ret.push_back(gcnew CoplanarStripline());
+    ret.push_back(gcnew DifferentialStripline());
+    ret.push_back(gcnew CoplanarDifferentialStripline());
 
-    for(auto s : ret) {
+    for each (auto s in ret) {
         s->setupParameters();
     }
     return ret;
@@ -79,15 +82,17 @@ QList<Scenario *> Scenario::createAll()
 
 void Scenario::setupParameters()
 {
-    auto layout = static_cast<QFormLayout*>(ui->parameters->layout());
-    for(auto &p : parameters) {
-        auto label = new QLabel(p.name+":");
-        auto entry = new SIUnitEdit(p.unit, p.prefixes, p.precision);
+    auto layout = static_cast<System::Windows::Forms::TableLayoutPanel^>(ui->parameters->Layout);
+    for each (auto p in parameters) {
+        auto label = gcnew System::Windows::Forms::Label();
+        label->Text = p.name + ":";
+        auto entry = gcnew SIUnitEdit(p.unit, p.prefixes, p.precision);
         entry->setValue(*p.value);
-        layout->addRow(label, entry);
+        layout->Controls->Add(label);
+        layout->Controls->Add(entry);
     }
-    setWindowTitle(name + " Setup Dialog");
+    this->Text = name + " Setup Dialog";
 
     // show the image
-    ui->image->setPixmap(getImage());
+    ui->image->Image = getImage();
 }

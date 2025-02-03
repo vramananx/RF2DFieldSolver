@@ -1,30 +1,27 @@
 #include "pcbview.h"
 
-#include <QPainter>
-#include <QMouseEvent>
-#include <QContextMenuEvent>
-#include <QMenu>
-#include <QAction>
+#include <System.Drawing.h>
+#include <System.Windows.Forms.h>
 
 #include "ui_vertexEditDialog.h"
 #include "util.h"
 
 #include "polygon.h"
 
-const QColor PCBView::backgroundColor = Qt::lightGray;
-const QColor PCBView::GNDColor = Qt::black;
-const QColor PCBView::tracePosColor = Qt::red;
-const QColor PCBView::traceNegColor = Qt::blue;
-const QColor PCBView::dielectricColor = Qt::darkGreen;
-const QColor PCBView::gridColor = Qt::gray;
+const System::Drawing::Color PCBView::backgroundColor = System::Drawing::Color::LightGray;
+const System::Drawing::Color PCBView::GNDColor = System::Drawing::Color::Black;
+const System::Drawing::Color PCBView::tracePosColor = System::Drawing::Color::Red;
+const System::Drawing::Color PCBView::traceNegColor = System::Drawing::Color::Blue;
+const System::Drawing::Color PCBView::dielectricColor = System::Drawing::Color::DarkGreen;
+const System::Drawing::Color PCBView::gridColor = System::Drawing::Color::Gray;
 
-PCBView::PCBView(QWidget *parent)
-    : QWidget{parent}
+PCBView::PCBView(System::Windows::Forms::UserControl^ parent)
+    : UserControl{parent}
 {
     list = nullptr;
     laplace = nullptr;
-    topLeft = QPointF(-1, 1);
-    topLeft = QPointF(1, -1);
+    topLeft = System::Drawing::PointF(-1, 1);
+    topLeft = System::Drawing::PointF(1, -1);
     appendElement = nullptr;
     dragVertex.e = nullptr;
     dragVertex.index = 0;
@@ -36,7 +33,7 @@ PCBView::PCBView(QWidget *parent)
     keepAspectRatio = true;
 }
 
-void PCBView::setCorners(QPointF topLeft, QPointF bottomRight)
+void PCBView::setCorners(System::Drawing::PointF topLeft, System::Drawing::PointF bottomRight)
 {
     this->topLeft = topLeft;
     this->bottomRight = bottomRight;
@@ -55,19 +52,19 @@ void PCBView::setLaplace(Laplace *laplace)
 void PCBView::startAppending(Element *e)
 {
     appendElement = e;
-    setMouseTracking(true);
+    this->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &PCBView::mouseMoveEvent);
 }
 
 void PCBView::setGrid(double grid)
 {
     this->grid = grid;
-    update();
+    this->Invalidate();
 }
 
 void PCBView::setShowGrid(bool show)
 {
     showGrid = show;
-    update();
+    this->Invalidate();
 }
 
 void PCBView::setSnapToGrid(bool snap)
@@ -78,95 +75,90 @@ void PCBView::setSnapToGrid(bool snap)
 void PCBView::setShowPotential(bool show)
 {
     showPotential = show;
-    update();
+    this->Invalidate();
 }
 
 void PCBView::setKeepAspectRatio(bool keep)
 {
     keepAspectRatio = keep;
-    update();
+    this->Invalidate();
 }
 
-void PCBView::paintEvent(QPaintEvent *event)
+void PCBView::OnPaint(System::Windows::Forms::PaintEventArgs^ event) override
 {
-    Q_UNUSED(event)
+    System::Drawing::Graphics^ p = event->Graphics;
 
-    QPainter p(this);
-
-    p.setViewport(0, 0, width(), height());
-    // p.setWindow is limited to integers, this implementation works with floating point
-    transform = QTransform();
+    p->SetClip(System::Drawing::Rectangle(0, 0, this->Width, this->Height));
+    // p->SetClip is limited to integers, this implementation works with floating point
+    transform = gcnew System::Drawing::Drawing2D::Matrix();
     if(keepAspectRatio) {
         // figure out which ratio is the limiting factor
-        auto x_ratio = p.viewport().width() / (bottomRight.x() - topLeft.x());
-        auto y_ratio = p.viewport().height() / (bottomRight.y() - topLeft.y());
+        auto x_ratio = p->ClipBounds.Width / (bottomRight.X - topLeft.X);
+        auto y_ratio = p->ClipBounds.Height / (bottomRight.Y - topLeft.Y);
         auto ratio = std::min(abs(x_ratio), abs(y_ratio));
-        transform.scale(copysign(ratio, x_ratio), copysign(ratio, y_ratio));
+        transform->Scale(copysign(ratio, x_ratio), copysign(ratio, y_ratio));
 
-        auto above = (topLeft.y() - bottomRight.y()) * (abs(y_ratio) / ratio - 1) / 2;
-        auto left = (topLeft.x() - bottomRight.x()) * (abs(x_ratio) / ratio - 1) / 2;
+        auto above = (topLeft.Y - bottomRight.Y) * (abs(y_ratio) / ratio - 1) / 2;
+        auto left = (topLeft.X - bottomRight.X) * (abs(x_ratio) / ratio - 1) / 2;
 
-        transform.translate(-topLeft.x() - left, -topLeft.y() - above);
+        transform->Translate(-topLeft.X - left, -topLeft.Y - above);
     } else {
-        transform.scale(p.viewport().width() / (bottomRight.x() - topLeft.x()),
-                        p.viewport().height() / (bottomRight.y() - topLeft.y()));
-        transform.translate(-topLeft.x(), -topLeft.y());
+        transform->Scale(p->ClipBounds.Width / (bottomRight.X - topLeft.X),
+                        p->ClipBounds.Height / (bottomRight.Y - topLeft.Y));
+        transform->Translate(-topLeft.X, -topLeft.Y);
     }
 
-    p.fillRect(QRectF(transform.map(topLeft), transform.map(bottomRight)), Qt::lightGray);
-    p.setBackground(QBrush(Qt::black));
+    p->FillRectangle(gcnew System::Drawing::SolidBrush(System::Drawing::Color::LightGray), System::Drawing::RectangleF(transform->TransformPoint(topLeft), transform->TransformPoint(bottomRight)));
+    p->SetClip(System::Drawing::Rectangle(0, 0, this->Width, this->Height));
 
     // show potential field
     // TODO make this optional
     if(showPotential && laplace && laplace->isResultReady()) {
-        for(int i=0;i<width();i++) {
-            for(int j=0;j<height();j++) {
-                auto coord = transform.inverted().map(QPointF(i, j));
+        for(int i=0;i<this->Width;i++) {
+            for(int j=0;j<this->Height;j++) {
+                auto coord = transform->TransformPoint(System::Drawing::PointF(i, j));
                 auto v = laplace->getPotential(coord);
-                p.setPen(Util::getIntensityGradeColor(v));
-                p.setOpacity(sqrt(abs(v)));
-                p.drawPoint(i, j);
+                p->DrawLine(gcnew System::Drawing::Pen(Util::getIntensityGradeColor(v)), i, j, i, j);
             }
         }
     }
-    p.setOpacity(1.0);
 
     // draw grid
     if(showGrid) {
         // x axis
-        p.setPen(gridColor);
-        for(double x = snapToGridPoint(topLeft).x(); x < bottomRight.x(); x += grid) {
-            auto top = transform.map(QPointF(x, topLeft.y()));
-            auto bottom = transform.map(QPointF(x, bottomRight.y()));
-            p.drawLine(top, bottom);
+        p->DrawLine(gcnew System::Drawing::Pen(gridColor), transform->TransformPoint(System::Drawing::PointF(topLeft.X, topLeft.Y)), transform->TransformPoint(System::Drawing::PointF(bottomRight.X, topLeft.Y)));
+        for(double x = snapToGridPoint(topLeft).X; x < bottomRight.X; x += grid) {
+            auto top = transform->TransformPoint(System::Drawing::PointF(x, topLeft.Y));
+            auto bottom = transform->TransformPoint(System::Drawing::PointF(x, bottomRight.Y));
+            p->DrawLine(gcnew System::Drawing::Pen(gridColor), top, bottom);
         }
         // y axis
-        for(double y = snapToGridPoint(bottomRight).y(); y < topLeft.y(); y += grid) {
-            auto left = transform.map(QPointF(topLeft.x(), y));
-            auto right = transform.map(QPointF(bottomRight.x(), y));
-            p.drawLine(left, right);
+        for(double y = snapToGridPoint(bottomRight).Y; y < topLeft.Y; y += grid) {
+            auto left = transform->TransformPoint(System::Drawing::PointF(topLeft.X, y));
+            auto right = transform->TransformPoint(System::Drawing::PointF(bottomRight.X, y));
+            p->DrawLine(gcnew System::Drawing::Pen(gridColor), left, right);
         }
     }
 
     // Show elements
     if(list) {
         for(auto e : list->getElements()) {
-            QColor elementColor;
+            System::Drawing::Color elementColor;
             switch(e->getType()) {
             case Element::Type::Dielectric: elementColor = dielectricColor; break;
             case Element::Type::TracePos: elementColor = tracePosColor; break;
             case Element::Type::TraceNeg: elementColor = traceNegColor; break;
             case Element::Type::GND: elementColor = GNDColor; break;
-            default: elementColor = Qt::gray; break;
+            default: elementColor = System::Drawing::Color::Gray; break;
             }
-            p.setBrush(elementColor);
-            p.setPen(elementColor);
+            p->FillRectangle(gcnew System::Drawing::SolidBrush(elementColor), System::Drawing::RectangleF(transform->TransformPoint(e->getVertices()[0]), System::Drawing::SizeF(vertexSize, vertexSize)));
+            p->DrawRectangle(gcnew System::Drawing::Pen(elementColor), System::Drawing::RectangleF(transform->TransformPoint(e->getVertices()[0]), System::Drawing::SizeF(vertexSize, vertexSize)));
 
             auto vertices = e->getVertices();
             // paint vertices in viewport to get constant vertex size
             for(auto v : vertices) {
-                auto devicePoint = transform.map(v);
-                p.drawEllipse(devicePoint, vertexSize/2, vertexSize/2);
+                auto devicePoint = transform->TransformPoint(v);
+                p->FillEllipse(gcnew System::Drawing::SolidBrush(elementColor), System::Drawing::RectangleF(devicePoint, System::Drawing::SizeF(vertexSize, vertexSize)));
             }
             // draw connections between vertices
             if(vertices.size() > 1) {
@@ -179,160 +171,166 @@ void PCBView::paintEvent(QPaintEvent *event)
                         }
                         prev = vertices.size() -  1;
                     }
-                    QPointF start = transform.map(vertices[i]);
-                    QPointF stop = transform.map(vertices[prev]);
-                    p.drawLine(start, stop);
+                    System::Drawing::PointF start = transform->TransformPoint(vertices[i]);
+                    System::Drawing::PointF stop = transform->TransformPoint(vertices[prev]);
+                    p->DrawLine(gcnew System::Drawing::Pen(elementColor), start, stop);
                 }
             }
             if(vertices.size() > 0 && e == appendElement){
                         // draw line from last vertex to pointer
-                        QPointF start = transform.map(vertices[vertices.size()-1]);
-                        QPointF stop = lastMouseCoords;
+                        System::Drawing::PointF start = transform->TransformPoint(vertices[vertices.size()-1]);
+                        System::Drawing::PointF stop = lastMouseCoords;
                         if(snapToGrid) {
-                            stop = transform.map(snapToGridPoint(transform.inverted().map(stop)));
+                            stop = transform->TransformPoint(snapToGridPoint(transform->TransformPoint(stop)));
                         }
-                        p.drawLine(start, stop);
+                        p->DrawLine(gcnew System::Drawing::Pen(elementColor), start, stop);
             }
         }
     }
 }
 
-void PCBView::mousePressEvent(QMouseEvent *event)
+void PCBView::mousePressEvent(System::Windows::Forms::MouseEventArgs^ event)
 {
     if (appendElement) {
         // check if we clicked on the first vertex
         auto vertices = appendElement->getVertices();
-        if(vertices.size() > 0 && getPixelDistanceToVertex(event->pos(), vertices[0]) < vertexCatchRadius) {
+        if(vertices.size() > 0 && getPixelDistanceToVertex(event->Location, vertices[0]) < vertexCatchRadius) {
             // clicked on the first element again, abort append mode
             appendElement = nullptr;
-            setMouseTracking(false);
-            update();
+            this->MouseMove -= gcnew System::Windows::Forms::MouseEventHandler(this, &PCBView::mouseMoveEvent);
+            this->Invalidate();
         } else {
             // record coordinates to place vertex when the mouse is released
-            pressCoords = event->pos();
+            pressCoords = event->Location;
             lastMouseCoords = pressCoords;
             pressCoordsValid = true;
         }
     } else {
         // not appending, may have been a click on a vertex
-        dragVertex = catchVertex(event->pos());
+        dragVertex = catchVertex(event->Location);
     }
 }
 
-void PCBView::mouseReleaseEvent(QMouseEvent *event)
+void PCBView::mouseReleaseEvent(System::Windows::Forms::MouseEventArgs^ event)
 {
-    Q_UNUSED(event);
     if (appendElement && pressCoordsValid) {
         // add vertex at indicated coordinates
-        auto vertexPoint = transform.inverted().map(QPointF(pressCoords));
+        auto vertexPoint = transform->TransformPoint(System::Drawing::PointF(pressCoords.X, pressCoords.Y));
         if(snapToGrid) {
             vertexPoint = snapToGridPoint(vertexPoint);
         }
         appendElement->appendVertex(vertexPoint);
         someElementChanged();
         pressCoordsValid = false;
-        update();
+        this->Invalidate();
     } else if (dragVertex.e) {
         dragVertex.e = nullptr;
     }
 }
 
-void PCBView::mouseMoveEvent(QMouseEvent *event)
+void PCBView::mouseMoveEvent(System::Windows::Forms::MouseEventArgs^ event)
 {
     if (appendElement) {
         // ignore, just record mouse position
-        lastMouseCoords = event->pos();
-        update();
+        lastMouseCoords = event->Location;
+        this->Invalidate();
     } else if(dragVertex.e) {
         // dragging a vertex
-        auto vertexPoint = transform.inverted().map(QPointF(event->pos()));
+        auto vertexPoint = transform->TransformPoint(System::Drawing::PointF(event->Location.X, event->Location.Y));
         if(snapToGrid) {
             vertexPoint = snapToGridPoint(vertexPoint);
         }
         dragVertex.e->changeVertex(dragVertex.index, vertexPoint);
         someElementChanged();
-        update();
+        this->Invalidate();
     }
 }
 
-void PCBView::mouseDoubleClickEvent(QMouseEvent *event)
+void PCBView::mouseDoubleClickEvent(System::Windows::Forms::MouseEventArgs^ event)
 {
     if (appendElement) {
         // double-click aborts appending
         appendElement = nullptr;
-        setMouseTracking(false);
-        update();
+        this->MouseMove -= gcnew System::Windows::Forms::MouseEventHandler(this, &PCBView::mouseMoveEvent);
+        this->Invalidate();
     } else {
-        auto info = catchVertex(event->pos());
+        auto info = catchVertex(event->Location);
         if(info.e) {
             // edit vertex coordinates
-            auto d = new QDialog(this);
-            d->setAttribute(Qt::WA_DeleteOnClose);
-            auto ui = new Ui::VertexEditDialog;
+            auto d = gcnew System::Windows::Forms::Form();
+            d->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedDialog;
+            d->ShowInTaskbar = false;
+            d->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;
+            d->MinimizeBox = false;
+            d->MaximizeBox = false;
+            d->ShowIcon = false;
+            d->Text = "Edit Vertex";
+
+            auto ui = gcnew Ui::VertexEditDialog;
             ui->setupUi(d);
 
             // save previous coordinates
             auto oldCoords = info.e->getVertices()[info.index];
 
-            auto updateVertex = [=](const QPointF &p){
+            auto updateVertex = [=](const System::Drawing::PointF &p){
                 info.e->changeVertex(info.index, p);
-                update();
+                this->Invalidate();
             };
 
             ui->xpos->setUnit("m");
             ui->xpos->setPrefixes("um ");
             ui->xpos->setPrecision(4);
-            ui->xpos->setValue(oldCoords.x());
-            connect(ui->xpos, &SIUnitEdit::valueChanged, this, [=](){
-                updateVertex(QPointF(ui->xpos->value(), ui->ypos->value()));
+            ui->xpos->setValue(oldCoords.X);
+            ui->xpos->ValueChanged += gcnew System::EventHandler(this, [=](System::Object^ sender, System::EventArgs^ e){
+                updateVertex(System::Drawing::PointF(ui->xpos->Value, ui->ypos->Value));
             });
 
             ui->ypos->setUnit("m");
             ui->ypos->setPrefixes("um ");
             ui->ypos->setPrecision(4);
-            ui->ypos->setValue(oldCoords.y());
-            connect(ui->ypos, &SIUnitEdit::valueChanged, this, [=](){
-                updateVertex(QPointF(ui->xpos->value(), ui->ypos->value()));
+            ui->ypos->setValue(oldCoords.Y);
+            ui->ypos->ValueChanged += gcnew System::EventHandler(this, [=](System::Object^ sender, System::EventArgs^ e){
+                updateVertex(System::Drawing::PointF(ui->xpos->Value, ui->ypos->Value));
             });
 
-            connect(ui->buttonBox, &QDialogButtonBox::accepted, d, &QDialog::accept);
-            connect(ui->buttonBox, &QDialogButtonBox::rejected, this, [=](){
+            ui->buttonBox->Accepted += gcnew System::EventHandler(d, &System::Windows::Forms::Form::Close);
+            ui->buttonBox->Rejected += gcnew System::EventHandler(this, [=](System::Object^ sender, System::EventArgs^ e){
                 // restore old coordinates
                 info.e->changeVertex(info.index, oldCoords);
-                update();
-                d->reject();
+                this->Invalidate();
+                d->Close();
             });
 
-            d->show();
+            d->ShowDialog();
         }
     }
 }
 
-void PCBView::contextMenuEvent(QContextMenuEvent *event)
+void PCBView::contextMenuEvent(System::Windows::Forms::MouseEventArgs^ event)
 {
     if (appendElement) {
         // ignore
         return;
     }
-    auto menu = new QMenu();
-    auto infoVertex = catchVertex(event->pos());
-    auto infoLine = catchLine(event->pos());
+    auto menu = gcnew System::Windows::Forms::ContextMenuStrip();
+    auto infoVertex = catchVertex(event->Location);
+    auto infoLine = catchLine(event->Location);
     Element *e = nullptr;
     if(infoVertex.e) {
         e = infoVertex.e;
         // clicked on a vertex
-        auto actionDeleteVertex = new QAction("Delete Vertex");
-        menu->addAction(actionDeleteVertex);
-        connect(actionDeleteVertex, &QAction::triggered, [=](){
+        auto actionDeleteVertex = gcnew System::Windows::Forms::ToolStripMenuItem("Delete Vertex");
+        menu->Items->Add(actionDeleteVertex);
+        actionDeleteVertex->Click += gcnew System::EventHandler(this, [=](System::Object^ sender, System::EventArgs^ e){
             infoVertex.e->removeVertex(infoVertex.index);
             someElementChanged();
         });
     } else if(infoLine.e) {
         e = infoLine.e;
         // clicked on a line
-        auto actionInsertVertex = new QAction("Insert Vertex here");
-        menu->addAction(actionInsertVertex);
-        connect(actionInsertVertex, &QAction::triggered, [=](){
+        auto actionInsertVertex = gcnew System::Windows::Forms::ToolStripMenuItem("Insert Vertex here");
+        menu->Items->Add(actionInsertVertex);
+        actionInsertVertex->Click += gcnew System::EventHandler(this, [=](System::Object^ sender, System::EventArgs^ e){
             // figure out at which index we have to insert the new vertex.
             // Usually this is the higher of the two but there is a special case if one index is the first vertex and the other the last
             int insertIndex = std::max(infoLine.index1, infoLine.index2);
@@ -341,7 +339,7 @@ void PCBView::contextMenuEvent(QContextMenuEvent *event)
                 // special case
                 insertIndex++;
             }
-            auto vertexPoint = transform.inverted().map(QPointF(event->pos()));
+            auto vertexPoint = transform->TransformPoint(System::Drawing::PointF(event->Location.X, event->Location.Y));
             infoLine.e->addVertex(insertIndex, vertexPoint);
             someElementChanged();
         });
@@ -349,23 +347,23 @@ void PCBView::contextMenuEvent(QContextMenuEvent *event)
     // TODO check if connection between vertices was clicked
     if(e) {
         // clicked on something connected to an element
-        auto actionDeleteElement = new QAction("Delete Element");
-        menu->addAction(actionDeleteElement);
-        connect(actionDeleteElement, &QAction::triggered, [=](){
+        auto actionDeleteElement = gcnew System::Windows::Forms::ToolStripMenuItem("Delete Element");
+        menu->Items->Add(actionDeleteElement);
+        actionDeleteElement->Click += gcnew System::EventHandler(this, [=](System::Object^ sender, System::EventArgs^ e){
             list->removeElement(e);
             someElementChanged();
         });
     }
-    menu->exec(event->globalPos());
-    update();
+    menu->Show(this, event->Location);
+    this->Invalidate();
 }
 
-double PCBView::getPixelDistanceToVertex(QPoint cursor, QPointF vertex)
+double PCBView::getPixelDistanceToVertex(System::Drawing::Point cursor, System::Drawing::PointF vertex)
 {
     // convert vertex into pixel coordinates
-    QPoint vertexPixel = transform.map(vertex).toPoint();
-    auto diff = vertexPixel - cursor;
-    return std::sqrt(diff.x()*diff.x()+diff.y()*diff.y());
+    System::Drawing::Point vertexPixel = transform->TransformPoint(vertex).ToPoint();
+    auto diff = System::Drawing::Point(vertexPixel.X - cursor.X, vertexPixel.Y - cursor.Y);
+    return std::sqrt(diff.X*diff.X+diff.Y*diff.Y);
 }
 
 void PCBView::someElementChanged()
@@ -375,7 +373,7 @@ void PCBView::someElementChanged()
     }
 }
 
-PCBView::VertexInfo PCBView::catchVertex(QPoint cursor)
+PCBView::VertexInfo PCBView::catchVertex(System::Drawing::Point cursor)
 {
     VertexInfo info;
     info.e = nullptr;
@@ -393,7 +391,7 @@ PCBView::VertexInfo PCBView::catchVertex(QPoint cursor)
     return info;
 }
 
-PCBView::LineInfo PCBView::catchLine(QPoint cursor)
+PCBView::LineInfo PCBView::catchLine(System::Drawing::Point cursor)
 {
     LineInfo info;
     info.e = nullptr;
@@ -407,9 +405,9 @@ PCBView::LineInfo PCBView::catchLine(QPoint cursor)
             if(prev < 0) {
                 prev = e->getVertices().size() - 1;
             }
-            QPointF vertexPixel1 = transform.map(e->getVertices()[i]).toPoint();
-            QPointF vertexPixel2 = transform.map(e->getVertices()[prev]).toPoint();
-            auto distance = Util::distanceToLine(QPointF(cursor), vertexPixel1, vertexPixel2);
+            System::Drawing::PointF vertexPixel1 = transform->TransformPoint(e->getVertices()[i]).ToPoint();
+            System::Drawing::PointF vertexPixel2 = transform->TransformPoint(e->getVertices()[prev]).ToPoint();
+            auto distance = Util::distanceToLine(System::Drawing::PointF(cursor.X, cursor.Y), vertexPixel1, vertexPixel2);
             if(distance < closestDistance) {
                 closestDistance = distance;
                 info.e = e;
@@ -421,19 +419,19 @@ PCBView::LineInfo PCBView::catchLine(QPoint cursor)
     return info;
 }
 
-QPointF PCBView::getBottomRight() const
+System::Drawing::PointF PCBView::getBottomRight() const
 {
     return bottomRight;
 }
 
-QPointF PCBView::getTopLeft() const
+System::Drawing::PointF PCBView::getTopLeft() const
 {
     return topLeft;
 }
 
-QPointF PCBView::snapToGridPoint(const QPointF &pos)
+System::Drawing::PointF PCBView::snapToGridPoint(const System::Drawing::PointF &pos)
 {
-    double snap_x = std::round(pos.x() / grid) * grid;
-    double snap_y = std::round(pos.y() / grid) * grid;
-    return QPointF(snap_x, snap_y);
+    double snap_x = std::round(pos.X / grid) * grid;
+    double snap_y = std::round(pos.Y / grid) * grid;
+    return System::Drawing::PointF(snap_x, snap_y);
 }
