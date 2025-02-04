@@ -8,17 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="CustomWidgets\informationbox.cs" />
-    <Compile Include="CustomWidgets\pcbview.cs" />
-    <Compile Include="CustomWidgets\siunitedit.cs" />
-    <Compile Include="element.cs" />
-    <Compile Include="elementlist.cs" />
-    <Compile Include="laplace\laplace.cs" />
-    <Compile Include="main.cs" />
-    <Compile Include="mainwindow.cs" />
-    <Compile Include="savable.cs" />
-    <Compile Include="Scenarios\scenario.cs" />
-    <Compile Include="util.cs" />
+    <Compile Include="RF2DFieldSolver.cs" />
+    <Compile Include="MainWindow.Designer.cs" />
   </ItemGroup>
 
   <ItemGroup>
