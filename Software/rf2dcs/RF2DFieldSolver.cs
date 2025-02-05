@@ -20,7 +20,7 @@ namespace RF2DFieldSolver
             }
             else
             {
-                normalized = (Convert.ToDouble(value) - Convert.ToDouble(fromLow)) / (Convert.ToDouble(fromHigh) - Convert.ToDouble(fromLow));
+                normalized = (Convert.ToDouble(value) - Convert.ToDouble(fromLow)) / (Convert.ToDouble(fromHigh) - Convert.ToDouble(toLow));
             }
             if (logTo)
             {
