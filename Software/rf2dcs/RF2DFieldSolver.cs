@@ -1376,4 +1376,482 @@ namespace RF2DFieldSolver
                 return;
             }
 
-            int
+            int steps = Math.Abs(e.Delta / 120);
+            int sign = e.Delta > 0 ? 1 : -1;
+            double newVal = _value;
+
+            if (this.Focused)
+            {
+                int cursor = this.SelectionStart;
+                if (cursor == 0)
+                {
+                    return;
+                }
+
+                int nthDigit = cursor;
+                if (_value < 0)
+                {
+                    nthDigit--;
+                }
+                int dotPos = this.Text.IndexOf('.');
+                if (dotPos >= 0 && dotPos < nthDigit)
+                {
+                    nthDigit--;
+                }
+                if (this.Text.StartsWith("-0.") || this.Text.StartsWith("0."))
+                {
+                    nthDigit--;
+                }
+
+                double step_size = Math.Pow(10, Math.Floor(Math.Log10(Math.Abs(newVal))) - nthDigit + 1);
+                newVal += step_size * steps * sign;
+                SetValue(newVal);
+                this.Text = this.PlaceholderText;
+                this.SelectionStart = cursor;
+            }
+            else
+            {
+                const int nthDigit = 3;
+                while (steps > 0)
+                {
+                    double step_size = Math.Pow(10, Math.Floor(Math.Log10(Math.Abs(newVal))) - nthDigit + 1);
+                    newVal += step_size * sign;
+                    steps--;
+                }
+                SetValue(newVal);
+            }
+        }
+
+        private void SetValueQuiet(double value)
+        {
+            _value = value;
+            this.PlaceholderText = Unit.ToString(value, unit, prefixes, precision);
+            if (!this.Text.IsEmpty())
+            {
+                ContinueEditing();
+            }
+        }
+
+        private void ParseNewValue(double factor)
+        {
+            string input = this.Text;
+            if (input.IsEmpty())
+            {
+                SetValueQuiet(_value);
+                OnEditingAborted();
+            }
+            else
+            {
+                if (input.EndsWith(unit))
+                {
+                    input = input.Substring(0, input.Length - unit.Length);
+                }
+                char lastChar = input[input.Length - 1];
+                if (prefixes.Contains(lastChar.ToString()))
+                {
+                    factor = Unit.SIPrefixToFactor(lastChar);
+                    input = input.Substring(0, input.Length - 1);
+                }
+
+                if (double.TryParse(input, out double v))
+                {
+                    Clear();
+                    SetValue(v * factor);
+                }
+                else
+                {
+                    Console.WriteLine("SIUnit conversion failure: " + input);
+                }
+            }
+        }
+
+        private void ContinueEditing()
+        {
+            this.Text = this.PlaceholderText;
+            this.SelectAll();
+        }
+
+        private static char SwapUpperLower(char c)
+        {
+            if (char.IsUpper(c))
+            {
+                return char.ToLower(c);
+            }
+            else if (char.IsLower(c))
+            {
+                return char.ToUpper(c);
+            }
+            else
+            {
+                return c;
+            }
+        }
+
+        protected virtual void OnValueChanged(double newValue)
+        {
+            ValueChanged?.Invoke(this, newValue);
+        }
+
+        protected virtual void OnValueUpdated(object sender)
+        {
+            ValueUpdated?.Invoke(sender, EventArgs.Empty);
+        }
+
+        protected virtual void OnEditingAborted()
+        {
+            EditingAborted?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public class Laplace : Form
+    {
+        private bool calculationRunning;
+        private bool resultReady;
+        private ElementList list;
+        private PointF topLeft;
+        private PointF bottomRight;
+        private double grid;
+        private int threads;
+        private double threshold;
+        private bool groundedBorders;
+        private bool ignoreDielectric;
+        private Lattice lattice;
+        private int lastPercent;
+        private Thread thread;
+
+        public Laplace()
+        {
+            calculationRunning = false;
+            resultReady = false;
+            list = null;
+            grid = 1e-5;
+            threads = 1;
+            threshold = 1e-6;
+            lattice = null;
+            groundedBorders = true;
+            ignoreDielectric = false;
+        }
+
+        public void SetArea(PointF topLeft, PointF bottomRight)
+        {
+            if (calculationRunning)
+            {
+                return;
+            }
+            this.topLeft = topLeft;
+            this.bottomRight = bottomRight;
+        }
+
+        public void SetGrid(double grid)
+        {
+            if (calculationRunning)
+            {
+                return;
+            }
+            if (grid > 0)
+            {
+                this.grid = grid;
+            }
+        }
+
+        public void SetThreads(int threads)
+        {
+            if (calculationRunning)
+            {
+                return;
+            }
+            if (threads > 0)
+            {
+                this.threads = threads;
+            }
+        }
+
+        public void SetThreshold(double threshold)
+        {
+            if (calculationRunning)
+            {
+                return;
+            }
+            if (threshold > 0)
+            {
+                this.threshold = threshold;
+            }
+        }
+
+        public void SetGroundedBorders(bool gnd)
+        {
+            if (calculationRunning)
+            {
+                return;
+            }
+            groundedBorders = gnd;
+        }
+
+        public void SetIgnoreDielectric(bool ignore)
+        {
+            if (calculationRunning)
+            {
+                return;
+            }
+            ignoreDielectric = ignore;
+        }
+
+        public bool StartCalculation(ElementList list)
+        {
+            if (calculationRunning)
+            {
+                return false;
+            }
+            calculationRunning = true;
+            resultReady = false;
+            lastPercent = 0;
+            Console.WriteLine("Laplace calculation starting");
+            if (lattice != null)
+            {
+                lattice.Dispose();
+                lattice = null;
+            }
+            this.list = list;
+
+            thread = new Thread(CalcThread);
+            thread.Start();
+            Console.WriteLine("Laplace thread started");
+            return true;
+        }
+
+        public void AbortCalculation()
+        {
+            if (!calculationRunning)
+            {
+                return;
+            }
+            lattice.Abort = true;
+        }
+
+        public double GetPotential(PointF p)
+        {
+            if (!resultReady)
+            {
+                return double.NaN;
+            }
+            var pos = CoordToRect(p);
+            int index_x = (int)Math.Round(pos.X) + 1;
+            int index_y = (int)Math.Round(pos.Y) + 1;
+            if (index_x < 0 || index_x >= lattice.Dim.X || index_y < 0 || index_y >= lattice.Dim.Y)
+            {
+                return double.NaN;
+            }
+            var c = lattice.Cells[index_x + index_y * lattice.Dim.X];
+            return c.Value;
+        }
+
+        public PointF GetGradient(PointF p)
+        {
+            PointF ret = new PointF(p.X, p.Y);
+            if (!resultReady)
+            {
+                return ret;
+            }
+            var pos = CoordToRect(p);
+            int index_x = (int)Math.Floor(pos.X) + 1;
+            int index_y = (int)Math.Floor(pos.Y) + 1;
+
+            if (index_x < 0 || index_x + 1 >= lattice.Dim.X || index_y < 0 || index_y + 1 >= lattice.Dim.Y)
+            {
+                return ret;
+            }
+
+            var c_floor = lattice.Cells[index_x + index_y * lattice.Dim.X];
+            var c_x = lattice.Cells[index_x + 1 + index_y * lattice.Dim.X];
+            var c_y = lattice.Cells[index_x + (index_y + 1) * lattice.Dim.X];
+            var grad_x = c_x.Value - c_floor.Value;
+            var grad_y = c_y.Value - c_floor.Value;
+            ret = new PointF(p.X + (float)grad_x, p.Y + (float)grad_y);
+            return ret;
+        }
+
+        public void InvalidateResult()
+        {
+            resultReady = false;
+        }
+
+        private PointF CoordFromRect(Rect pos)
+        {
+            PointF ret = new PointF();
+            ret.X = (float)(pos.X * grid + topLeft.X);
+            ret.Y = (float)(pos.Y * grid + bottomRight.Y);
+            return ret;
+        }
+
+        private Rect CoordToRect(PointF pos)
+        {
+            Rect ret = new Rect();
+            ret.X = (pos.X - topLeft.X) / grid;
+            ret.Y = (pos.Y - bottomRight.Y) / grid;
+            return ret;
+        }
+
+        private Bound Boundary(Bound bound, Rect pos)
+        {
+            var coord = CoordFromRect(pos);
+            bound.Value = 0;
+            bound.Cond = Condition.None;
+
+            bool isBorder = Math.Abs(coord.X - topLeft.X) < 1e-6 || Math.Abs(coord.X - bottomRight.X) < 1e-6 || Math.Abs(coord.Y - topLeft.Y) < 1e-6 || Math.Abs(coord.Y - bottomRight.Y) < 1e-6;
+
+            if (groundedBorders && isBorder)
+            {
+                bound.Value = 0;
+                bound.Cond = Condition.Dirichlet;
+                return bound;
+            }
+            else
+            {
+                foreach (var e in list.GetElements())
+                {
+                    if (e.GetType() == Element.Type.Dielectric)
+                    {
+                        continue;
+                    }
+                    var poly = e.ToPolygon();
+                    if (poly.Contains(coord))
+                    {
+                        switch (e.GetType())
+                        {
+                            case Element.Type.GND:
+                                bound.Value = 0;
+                                bound.Cond = Condition.Dirichlet;
+                                return bound;
+                            case Element.Type.TracePos:
+                                bound.Value = 1.0;
+                                bound.Cond = Condition.Dirichlet;
+                                return bound;
+                            case Element.Type.TraceNeg:
+                                bound.Value = -1.0;
+                                bound.Cond = Condition.Dirichlet;
+                                return bound;
+                            default:
+                                return bound;
+                        }
+                    }
+                }
+            }
+            return bound;
+        }
+
+        private double Weight(Rect pos)
+        {
+            if (ignoreDielectric)
+            {
+                return 1.0;
+            }
+
+            var coord = CoordFromRect(pos);
+            return Math.Sqrt(list.GetDielectricConstantAt(coord));
+        }
+
+        private void CalcThread()
+        {
+            Console.WriteLine("Creating lattice");
+            Rect size = new Rect { X = (bottomRight.X - topLeft.X) / grid, Y = (topLeft.Y - bottomRight.Y) / grid };
+            Point dim = new Point { X = (uint)((bottomRight.X - topLeft.X) / grid), Y = (uint)((topLeft.Y - bottomRight.Y) / grid) };
+            lattice = new Lattice(size, dim, Boundary, Weight);
+            if (lattice != null)
+            {
+                Console.WriteLine("Lattice creation complete");
+            }
+            else
+            {
+                Console.WriteLine("Lattice creation failed");
+                return;
+            }
+
+            Config conf = new Config { Threads = (byte)threads, Distance = 10, Threshold = threshold };
+            if (conf.Threads > lattice.Dim.Y / 5)
+            {
+                conf.Threads = (byte)(lattice.Dim.Y / 5);
+            }
+            conf.Distance = (byte)(lattice.Dim.Y / threads);
+            Console.WriteLine("Starting calculation threads");
+            var it = lattice.ComputeThreaded(conf, CalcProgressFromDiff);
+            calculationRunning = false;
+            if (lattice.Abort)
+            {
+                Console.WriteLine("Laplace calculation aborted");
+                resultReady = false;
+                Console.WriteLine("0%");
+                Console.WriteLine("Calculation aborted");
+            }
+            else
+            {
+                Console.WriteLine("Laplace calculation complete, took " + it + " iterations");
+                resultReady = true;
+                Console.WriteLine("100%");
+                Console.WriteLine("Calculation done");
+            }
+        }
+
+        private void CalcProgressFromDiff(double diff)
+        {
+            double endTime = Math.Pow(-Math.Log(threshold), 6);
+            double currentTime = Math.Pow(-Math.Log(diff), 6);
+            double percent = currentTime * 100 / endTime;
+            if (percent > 100)
+            {
+                percent = 100;
+            }
+            else if (percent < lastPercent)
+            {
+                percent = lastPercent;
+            }
+            lastPercent = percent;
+            Console.WriteLine(percent + "%");
+        }
+    }
+
+    public class Gauss : Form
+    {
+        public Gauss()
+        {
+        }
+
+        public static double GetCharge(Laplace laplace, ElementList list, Element e, double gridSize, double distance)
+        {
+            var integral = Polygon.Offset(e.GetVertices(), distance);
+
+            double chargeSum = 0;
+            for (int i = 0; i < integral.Count; i++)
+            {
+                var pp = integral[(i + integral.Count - 1) % integral.Count];
+                var pc = integral[i];
+
+                var increment = new Line(pp, pc);
+                var unitVector = increment;
+                unitVector.Length = 1.0;
+                int points = (int)Math.Ceiling(increment.Length / gridSize);
+                double stepSize = increment.Length / points;
+                increment.Length = stepSize;
+                var point = pp + new PointF((float)(increment.Dx / 2), (float)(increment.Dy / 2));
+                for (int j = 0; j < points; j++)
+                {
+                    var gradient = laplace.GetGradient(point);
+                    if (list != null)
+                    {
+                        gradient.Length *= list.GetDielectricConstantAt(point);
+                    }
+                    double perp = gradient.Dx * unitVector.Dy - gradient.Dy * unitVector.Dx;
+                    perp *= stepSize / gridSize;
+                    chargeSum += perp;
+                    point += new PointF((float)increment.Dx, (float)increment.Dy);
+                }
+            }
+
+            if (!Polygon.IsClockwise(integral))
+            {
+                chargeSum *= -1;
+            }
+
+            return chargeSum;
+        }
+    }
+}
