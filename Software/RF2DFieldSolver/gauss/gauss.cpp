@@ -1,4 +1,21 @@
-#include "gauss.h"
+#include <QObject>
+
+#include "laplace/laplace.h"
+#include "elementlist.h"
+
+class Gauss : public QObject
+{
+    Q_OBJECT
+public:
+    explicit Gauss(QObject *parent = nullptr);
+
+    static double getCharge(Laplace *laplace, ElementList *list, Element *e, double gridSize, double distance);
+
+signals:
+    void info(QString info);
+    void warning(QString warning);
+    void error(QString error);
+};
 
 #include "polygon.h"
 

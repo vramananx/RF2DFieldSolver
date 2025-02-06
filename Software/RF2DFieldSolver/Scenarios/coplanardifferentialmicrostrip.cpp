@@ -1,6 +1,20 @@
-#include "coplanardifferentialmicrostrip.h"
-
 #include "ui_scenario.h"
+
+class CoplanarDifferentialMicrostrip : public Scenario
+{
+public:
+    CoplanarDifferentialMicrostrip();
+protected:
+    virtual ElementList *createScenario() override;
+    virtual QPixmap getImage() override;
+private:
+    double width;
+    double height;
+    double gapTrace;
+    double gapCoplanar;
+    double substrate_height;
+    double e_r;
+};
 
 CoplanarDifferentialMicrostrip::CoplanarDifferentialMicrostrip()
 {
@@ -82,4 +96,3 @@ QPixmap CoplanarDifferentialMicrostrip::getImage()
 {
     return QPixmap(":/images/coplanar_microstrip_differential.png");
 }
-
